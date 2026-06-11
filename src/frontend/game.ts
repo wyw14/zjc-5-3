@@ -1,3 +1,5 @@
+type GameMode = 'addsub' | 'mixed' | 'multiply';
+
 interface Question {
   id: number;
   expression: string;
@@ -5,24 +7,33 @@ interface Question {
   options: number[];
 }
 
+const modeNames: Record<GameMode, string> = {
+  addsub: '加减法',
+  multiply: '乘法',
+  mixed: '混合模式'
+};
+
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const questionText = document.getElementById('question-text')!;
 const optionBtns = document.querySelectorAll('.option-btn') as NodeListOf<HTMLButtonElement>;
 const hpBar = document.getElementById('hp-bar')!;
 const hpText = document.getElementById('hp-text')!;
+const modeText = document.getElementById('mode-text')!;
 const scoreText = document.getElementById('score-text')!;
 const progressText = document.getElementById('progress-text')!;
 const overlay = document.getElementById('overlay')!;
 const overlayTitle = document.getElementById('overlay-title')!;
 const overlayMsg = document.getElementById('overlay-msg')!;
 const startBtn = document.getElementById('start-btn')!;
+const modeSelect = document.getElementById('mode-select')!;
 
 const MAX_HP = 5;
 let hp = MAX_HP;
 let score = 0;
 let currentIndex = 0;
 let questions: Question[] = [];
+let currentMode: GameMode = 'addsub';
 let isLocked = false;
 
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number; }
@@ -320,6 +331,7 @@ function updateHUD() {
   const pct = (hp / MAX_HP) * 100;
   hpBar.style.width = pct + '%';
   hpText.textContent = `❤️ ${hp} / ${MAX_HP}`;
+  modeText.textContent = `📝 ${modeNames[currentMode]}`;
   scoreText.textContent = `🏆 ${score}`;
   progressText.textContent = `${currentIndex} / ${questions.length}`;
 }
@@ -349,13 +361,22 @@ function showQuestion() {
   isLocked = false;
 }
 
-async function fetchQuestions(): Promise<Question[]> {
-  const res = await fetch('/api/questions');
+async function fetchQuestions(mode: GameMode): Promise<{ questions: Question[]; mode: GameMode }> {
+  const res = await fetch(`/api/questions?mode=${mode}`);
   const data = await res.json();
-  return data.questions;
+  return { questions: data.questions, mode: data.mode };
+}
+
+function getSelectedMode(): GameMode {
+  const selected = document.querySelector('input[name="mode"]:checked') as HTMLInputElement;
+  const mode = selected?.value as GameMode;
+  return ['addsub', 'mixed', 'multiply'].includes(mode) ? mode : 'addsub';
 }
 
 async function startGame() {
+  const mode = getSelectedMode();
+  currentMode = mode;
+  modeSelect.style.display = 'none';
   overlay.classList.add('hidden');
   hp = MAX_HP;
   score = 0;
@@ -363,15 +384,17 @@ async function startGame() {
   particles = [];
   damageFlash = 0;
   initPositions();
-  updateHUD();
 
   try {
-    questions = await fetchQuestions();
+    const result = await fetchQuestions(mode);
+    questions = result.questions;
+    currentMode = result.mode;
   } catch {
     overlay.classList.remove('hidden');
     overlayTitle.textContent = '出错了';
     overlayMsg.textContent = '无法加载题目，请刷新重试';
     startBtn.textContent = '重试';
+    modeSelect.style.display = 'flex';
     return;
   }
 
@@ -381,11 +404,12 @@ async function startGame() {
 
 function endGame() {
   overlay.classList.remove('hidden');
+  modeSelect.style.display = 'flex';
   if (hp <= 0) {
-    overlayTitle.textContent = '💀 勇士倒下了';
+    overlayTitle.textContent = `💀 ${modeNames[currentMode]} - 勇士倒下了`;
     overlayMsg.textContent = `最终得分：${score}  |  已答：${currentIndex} 题`;
   } else {
-    overlayTitle.textContent = '🎉 通关！';
+    overlayTitle.textContent = `🎉 ${modeNames[currentMode]} - 通关！`;
     overlayMsg.textContent = `全部 ${questions.length} 题完成！得分：${score}`;
   }
   startBtn.textContent = '再来一局';

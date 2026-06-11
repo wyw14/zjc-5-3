@@ -1,3 +1,5 @@
+type GameMode = 'addsub' | 'mixed' | 'multiply';
+
 interface Question {
   id: number;
   expression: string;
@@ -18,8 +20,7 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function generateQuestion(id: number): Question {
-  const op = Math.random() < 0.5 ? '+' : '-';
+function generateAddSubQuestion(id: number, op: '+' | '-'): Question {
   let a: number, b: number, answer: number;
 
   if (op === '+') {
@@ -33,7 +34,10 @@ function generateQuestion(id: number): Question {
   }
 
   const expression = `${a} ${op} ${b}`;
+  return { id, expression, correctAnswer: answer, options: generateOptions(answer) };
+}
 
+function generateOptions(answer: number): number[] {
   const optionSet = new Set<number>([answer]);
   while (optionSet.size < 3) {
     const offset = randInt(1, 5) * (Math.random() < 0.5 ? 1 : -1);
@@ -42,16 +46,45 @@ function generateQuestion(id: number): Question {
       optionSet.add(fake);
     }
   }
-
-  return { id, expression, correctAnswer: answer, options: shuffle([...optionSet]) };
+  return shuffle([...optionSet]);
 }
 
-export function generateQuestions(count: number = 50): Question[] {
+function generateMultiplyQuestion(id: number, usedKeys: Set<string>): Question {
+  let a: number, b: number, key: string;
+  do {
+    a = randInt(1, 9);
+    b = randInt(1, 9);
+    key = `${Math.min(a, b)}x${Math.max(a, b)}`;
+  } while (usedKeys.has(key));
+  usedKeys.add(key);
+
+  const answer = a * b;
+  const expression = `${a} × ${b}`;
+  return { id, expression, correctAnswer: answer, options: generateOptions(answer) };
+}
+
+export function generateQuestions(count: number = 50, mode: GameMode = 'addsub'): Question[] {
   const questions: Question[] = [];
+  const usedMultiplyKeys = new Set<string>();
+
   for (let i = 0; i < count; i++) {
-    questions.push(generateQuestion(i + 1));
+    let op: '+' | '-' | '×';
+    if (mode === 'addsub') {
+      op = Math.random() < 0.5 ? '+' : '-';
+    } else if (mode === 'multiply') {
+      op = '×';
+    } else {
+      const r = Math.random();
+      op = r < 0.33 ? '+' : r < 0.66 ? '-' : '×';
+    }
+
+    if (op === '×') {
+      questions.push(generateMultiplyQuestion(i + 1, usedMultiplyKeys));
+    } else {
+      questions.push(generateAddSubQuestion(i + 1, op));
+    }
   }
   return questions;
 }
 
-export type { Question };
+export type { Question, GameMode };

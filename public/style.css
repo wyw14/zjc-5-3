@@ -46,9 +46,14 @@ html, body {
   border-radius: 8px;
 }
 
-#hp-text, #score-text, #progress-text {
+#hp-text, #mode-text, #score-text, #progress-text {
   font-size: 14px;
   white-space: nowrap;
+}
+
+#mode-text {
+  color: #f5c542;
+  font-weight: 600;
 }
 
 #score-text { margin-left: auto; }
@@ -154,6 +159,53 @@ html, body {
   font-size: 16px;
   color: #aaa;
   margin-bottom: 24px;
+}
+
+#mode-select {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  justify-content: center;
+}
+
+.mode-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 2px solid #4a6fa5;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: rgba(26, 58, 92, 0.5);
+}
+
+.mode-option:hover {
+  border-color: #6a9fd8;
+  background: rgba(42, 90, 140, 0.6);
+}
+
+.mode-option input[type="radio"] {
+  accent-color: #f5c542;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.mode-option span {
+  font-size: 14px;
+  color: #eee;
+  user-select: none;
+}
+
+.mode-option input[type="radio"]:checked + span {
+  color: #f5c542;
+  font-weight: 700;
+}
+
+.mode-option:has(input[type="radio"]:checked) {
+  border-color: #f5c542;
+  background: rgba(245, 197, 66, 0.15);
 }
 
 #start-btn {
