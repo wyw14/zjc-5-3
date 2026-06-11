@@ -7,6 +7,14 @@ interface Question {
   options: number[];
 }
 
+interface MultiplyPair {
+  a: number;
+  b: number;
+}
+
+const MULTIPLY_MIN = 1;
+const MULTIPLY_MAX = 12;
+
 function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -18,6 +26,21 @@ function shuffle<T>(arr: T[]): T[] {
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+function buildMultiplyPool(): MultiplyPair[] {
+  const pool: MultiplyPair[] = [];
+  const seen = new Set<string>();
+  for (let a = MULTIPLY_MIN; a <= MULTIPLY_MAX; a++) {
+    for (let b = MULTIPLY_MIN; b <= MULTIPLY_MAX; b++) {
+      const key = `${Math.min(a, b)}x${Math.max(a, b)}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        pool.push({ a, b });
+      }
+    }
+  }
+  return pool;
 }
 
 function generateAddSubQuestion(id: number, op: '+' | '-'): Question {
@@ -49,15 +72,8 @@ function generateOptions(answer: number): number[] {
   return shuffle([...optionSet]);
 }
 
-function generateMultiplyQuestion(id: number, usedKeys: Set<string>): Question {
-  let a: number, b: number, key: string;
-  do {
-    a = randInt(1, 9);
-    b = randInt(1, 9);
-    key = `${Math.min(a, b)}x${Math.max(a, b)}`;
-  } while (usedKeys.has(key));
-  usedKeys.add(key);
-
+function buildMultiplyQuestion(id: number, pair: MultiplyPair): Question {
+  const { a, b } = pair;
   const answer = a * b;
   const expression = `${a} × ${b}`;
   return { id, expression, correctAnswer: answer, options: generateOptions(answer) };
@@ -65,9 +81,26 @@ function generateMultiplyQuestion(id: number, usedKeys: Set<string>): Question {
 
 export function generateQuestions(count: number = 50, mode: GameMode = 'addsub'): Question[] {
   const questions: Question[] = [];
-  const usedMultiplyKeys = new Set<string>();
 
-  for (let i = 0; i < count; i++) {
+  let multiplyPool: MultiplyPair[] = [];
+  let multiplyPoolIndex = 0;
+  if (mode === 'multiply' || mode === 'mixed') {
+    multiplyPool = shuffle(buildMultiplyPool());
+  }
+
+  function getNextMultiplyPair(): MultiplyPair {
+    if (multiplyPoolIndex >= multiplyPool.length) {
+      multiplyPool = shuffle(buildMultiplyPool());
+      multiplyPoolIndex = 0;
+    }
+    return multiplyPool[multiplyPoolIndex++];
+  }
+
+  const actualCount = mode === 'multiply'
+    ? Math.min(count, multiplyPool.length)
+    : count;
+
+  for (let i = 0; i < actualCount; i++) {
     let op: '+' | '-' | '×';
     if (mode === 'addsub') {
       op = Math.random() < 0.5 ? '+' : '-';
@@ -79,7 +112,7 @@ export function generateQuestions(count: number = 50, mode: GameMode = 'addsub')
     }
 
     if (op === '×') {
-      questions.push(generateMultiplyQuestion(i + 1, usedMultiplyKeys));
+      questions.push(buildMultiplyQuestion(i + 1, getNextMultiplyPair()));
     } else {
       questions.push(generateAddSubQuestion(i + 1, op));
     }
